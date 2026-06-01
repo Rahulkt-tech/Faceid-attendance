@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FaceAttend — Smart Attendance System</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --card: #16161f;
+    --border: #22222e;
+    --accent: #6c63ff;
+    --accent2: #00e5ff;
+    --text: #f0f0f8;
+    --muted: #6b6b80;
+    --success: #00e676;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* Animated bg */
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(108,99,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(108,99,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  .bg-glow {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(108,99,255,0.18), transparent),
+                radial-gradient(ellipse 40% 40% at 80% 80%, rgba(0,229,255,0.08), transparent);
+  }
+  .container { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 2rem; }
+
+  /* Nav */
+  nav {
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,15,0.85);
+    backdrop-filter: blur(12px);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.2rem 2rem; max-width: 1100px; margin: 0 auto;
+  }
+  .logo {
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.4rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+  }
+  .logo span { -webkit-text-fill-color: var(--text); }
+
+  /* Hero */
+  .hero {
+    padding: 7rem 0 4rem;
+    text-align: center;
+  }
+  .badge {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: rgba(108,99,255,0.12); border: 1px solid rgba(108,99,255,0.3);
+    border-radius: 100px; padding: 0.35rem 1rem; font-size: 0.8rem;
+    color: #a89fff; margin-bottom: 2rem; letter-spacing: 1px; text-transform: uppercase;
+  }
+  .badge-dot { width:6px; height:6px; background: var(--accent); border-radius:50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1; transform:scale(1)} 50%{opacity:.5; transform:scale(1.4)} }
+  h1 {
+    font-family: 'Syne', sans-serif; font-weight: 800;
+    font-size: clamp(2.5rem, 6vw, 4.5rem); line-height: 1.05;
+    letter-spacing: -2px; margin-bottom: 1.5rem;
+  }
+  h1 .highlight {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .hero-sub {
+    color: var(--muted); font-size: 1.1rem; max-width: 520px;
+    margin: 0 auto 3rem; line-height: 1.7;
+  }
+
+  /* Portal Cards */
+  .portals {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 1.5rem; margin-bottom: 5rem;
+  }
+  @media(max-width:640px) { .portals { grid-template-columns: 1fr; } }
+  .portal-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 2.5rem;
+    text-decoration: none; color: var(--text);
+    transition: all 0.3s ease;
+    position: relative; overflow: hidden;
+    display: block;
+  }
+  .portal-card::before {
+    content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity 0.3s;
+  }
+  .portal-card.portal-a::before { background: radial-gradient(circle at 30% 30%, rgba(108,99,255,0.12), transparent 60%); }
+  .portal-card.portal-b::before { background: radial-gradient(circle at 30% 30%, rgba(0,229,255,0.1), transparent 60%); }
+  .portal-card:hover { transform: translateY(-4px); border-color: rgba(108,99,255,0.4); }
+  .portal-card:hover::before { opacity: 1; }
+  .portal-icon {
+    width: 56px; height: 56px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem; margin-bottom: 1.5rem;
+  }
+  .portal-a .portal-icon { background: rgba(108,99,255,0.15); }
+  .portal-b .portal-icon { background: rgba(0,229,255,0.1); }
+  .portal-card h2 {
+    font-family: 'Syne', sans-serif; font-weight: 700;
+    font-size: 1.4rem; margin-bottom: 0.6rem; letter-spacing: -0.5px;
+  }
+  .portal-card p { color: var(--muted); font-size: 0.92rem; line-height: 1.6; margin-bottom: 1.8rem; }
+  .portal-link {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-size: 0.88rem; font-weight: 500;
+  }
+  .portal-a .portal-link { color: var(--accent); }
+  .portal-b .portal-link { color: var(--accent2); }
+  .arrow { transition: transform 0.2s; }
+  .portal-card:hover .arrow { transform: translateX(4px); }
+
+  /* Stats */
+  .stats {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1rem; margin-bottom: 5rem;
+  }
+  @media(max-width:600px) { .stats { grid-template-columns: 1fr; } }
+  .stat-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.5rem; text-align: center;
+  }
+  .stat-num {
+    font-family: 'Syne', sans-serif; font-size: 2rem;
+    font-weight: 800; color: var(--accent); margin-bottom: 0.3rem;
+  }
+  .stat-label { color: var(--muted); font-size: 0.85rem; }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border); padding: 2rem;
+    text-align: center; color: var(--muted); font-size: 0.85rem;
+  }
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+
+<nav>
+  <div class="nav-inner">
+    <div class="logo">Face<span>Attend</span></div>
+    <div style="display:flex;gap:1rem;">
+      <a href="/register" style="color:var(--muted);text-decoration:none;font-size:.9rem;">Register</a>
+      <a href="/attendance" style="color:var(--muted);text-decoration:none;font-size:.9rem;">Attendance</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="hero">
+    <div class="badge"><span class="badge-dot"></span> AI-Powered Face Recognition</div>
+    <h1>Smart <span class="highlight">Attendance</span><br>System</h1>
+    <p class="hero-sub">Automated face recognition attendance tracking. Register students once, let the AI do the rest.</p>
+  </div>
+
+  <div class="portals">
+    <a href="/register" class="portal-card portal-a">
+      <div class="portal-icon">🗂️</div>
+      <h2>Student Database</h2>
+      <p>Register new students with photo, name, roll number, and address. Manage your complete student database.</p>
+      <div class="portal-link">Open Portal <span class="arrow">→</span></div>
+    </a>
+    <a href="/attendance" class="portal-card portal-b">
+      <div class="portal-icon">📸</div>
+      <h2>Live Attendance</h2>
+      <p>Real-time face recognition via camera. Automatically identifies students and marks attendance with timestamp.</p>
+      <div class="portal-link">Open Portal <span class="arrow">→</span></div>
+    </a>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-num" id="stat-students">—</div>
+      <div class="stat-label">Registered Students</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="stat-today">—</div>
+      <div class="stat-label">Present Today</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="stat-total">—</div>
+      <div class="stat-label">Total Records</div>
+    </div>
+  </div>
+</div>
+
+<footer>FaceAttend — Smart Face Detection Attendance System</footer>
+
+<script>
+  async function loadStats() {
+    const [students, att] = await Promise.all([
+      fetch('/api/students').then(r=>r.json()),
+      fetch('/api/attendance').then(r=>r.json())
+    ]);
+    document.getElementById('stat-students').textContent = students.length;
+    const today = new Date().toISOString().slice(0,10);
+    document.getElementById('stat-today').textContent = att.filter(a=>a.date===today).length;
+    document.getElementById('stat-total').textContent = att.length;
+  }
+  loadStats();
+</script>
+</body>
+</html>

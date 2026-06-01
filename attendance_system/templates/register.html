@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Database — FaceAttend</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0a0f; --surface:#111118; --card:#16161f; --border:#22222e;
+    --accent:#6c63ff; --accent2:#00e5ff; --text:#f0f0f8; --muted:#6b6b80;
+    --success:#00e676; --error:#ff5252; --warn:#ffab00;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; }
+  .bg-grid {
+    position:fixed; inset:0; z-index:0;
+    background-image: linear-gradient(rgba(108,99,255,0.04) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(108,99,255,0.04) 1px,transparent 1px);
+    background-size:40px 40px;
+  }
+  .bg-glow {
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background: radial-gradient(ellipse 60% 40% at 20% 0%,rgba(108,99,255,0.15),transparent);
+  }
+  nav {
+    border-bottom:1px solid var(--border); background:rgba(10,10,15,0.9);
+    backdrop-filter:blur(12px); position:sticky; top:0; z-index:100;
+  }
+  .nav-inner {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:1.2rem 2rem; max-width:1200px; margin:0 auto;
+  }
+  .logo { font-family:'Syne',sans-serif; font-weight:800; font-size:1.3rem; text-decoration:none;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .logo span { -webkit-text-fill-color:var(--text); }
+  .nav-links a { color:var(--muted); text-decoration:none; font-size:.9rem; margin-left:1.5rem; transition:color .2s; }
+  .nav-links a:hover,.nav-links a.active { color:var(--text); }
+
+  .main { position:relative; z-index:1; max-width:1200px; margin:0 auto; padding:2rem; }
+  .page-header { margin-bottom:2rem; }
+  .page-header h1 { font-family:'Syne',sans-serif; font-weight:800; font-size:2rem; letter-spacing:-1px; margin-bottom:.4rem; }
+  .page-header p { color:var(--muted); font-size:.95rem; }
+
+  .layout { display:grid; grid-template-columns:420px 1fr; gap:2rem; }
+  @media(max-width:900px){ .layout{ grid-template-columns:1fr; } }
+
+  /* Form Card */
+  .form-card { background:var(--card); border:1px solid var(--border); border-radius:20px; padding:2rem; height:fit-content; }
+  .form-card h2 { font-family:'Syne',sans-serif; font-weight:700; font-size:1.1rem; margin-bottom:1.2rem; }
+
+  /* Source Tabs */
+  .source-tabs { display:flex; gap:.5rem; margin-bottom:1.2rem; background:#0d0d14; border-radius:12px; padding:.35rem; }
+  .tab-btn {
+    flex:1; padding:.55rem; border:none; border-radius:8px; cursor:pointer;
+    font-family:'DM Sans',sans-serif; font-size:.83rem; font-weight:500;
+    background:transparent; color:var(--muted); transition:all .2s;
+    display:flex; align-items:center; justify-content:center; gap:.4rem;
+  }
+  .tab-btn.active { background:var(--card); color:var(--text); box-shadow:0 2px 8px rgba(0,0,0,.3); }
+  .tab-btn:hover:not(.active) { color:var(--text); }
+
+  /* Camera */
+  .cam-wrap { position:relative; width:100%; aspect-ratio:4/3; background:#0d0d14; border-radius:12px; overflow:hidden; margin-bottom:1rem; }
+  #cam-video { width:100%; height:100%; object-fit:cover; }
+  .cam-overlay {
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(10,10,20,.85); flex-direction:column; gap:.6rem;
+  }
+  .cam-icon { font-size:2.5rem; }
+  .cam-label { color:var(--muted); font-size:.85rem; }
+  #cam-canvas { display:none; }
+  #preview-img { width:100%; height:100%; object-fit:cover; display:none; position:absolute; inset:0; }
+
+  /* Upload Drop Zone */
+  .upload-zone {
+    width:100%; aspect-ratio:4/3; border:2px dashed var(--border); border-radius:12px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:.75rem; cursor:pointer; transition:all .25s; margin-bottom:1rem;
+    background:#0d0d14; position:relative; overflow:hidden;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color:var(--accent); background:rgba(108,99,255,.06);
+  }
+  .upload-zone .up-icon { font-size:2.8rem; }
+  .upload-zone .up-title { font-family:'Syne',sans-serif; font-weight:700; font-size:.95rem; }
+  .upload-zone .up-sub { color:var(--muted); font-size:.8rem; text-align:center; line-height:1.5; }
+  .upload-zone .up-badge {
+    background:rgba(108,99,255,.15); border:1px solid rgba(108,99,255,.3);
+    color:#a89fff; font-size:.72rem; padding:.2rem .6rem; border-radius:100px;
+  }
+  #file-input { display:none; }
+  #upload-preview { width:100%; height:100%; object-fit:cover; display:none; position:absolute; inset:0; border-radius:10px; }
+  .upload-overlay-clear {
+    position:absolute; top:.5rem; right:.5rem;
+    background:rgba(0,0,0,.6); border:none; color:var(--text);
+    border-radius:6px; padding:.3rem .6rem; cursor:pointer; font-size:.78rem;
+    display:none;
+  }
+
+  .cam-btns { display:flex; gap:.75rem; margin-bottom:1.5rem; flex-wrap:wrap; }
+  .btn { padding:.65rem 1.2rem; border-radius:10px; border:none; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:.88rem; font-weight:500; transition:all .2s; display:flex; align-items:center; gap:.4rem; white-space:nowrap; }
+  .btn-outline { background:transparent; border:1px solid var(--border); color:var(--text); }
+  .btn-outline:hover { border-color:var(--accent); color:var(--accent); }
+  .btn-accent { background:var(--accent); color:#fff; flex:1; justify-content:center; }
+  .btn-accent:hover { background:#7c74ff; transform:translateY(-1px); }
+  .btn-accent:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+  .btn-snap { background:rgba(0,229,255,0.1); border:1px solid rgba(0,229,255,0.3); color:var(--accent2); }
+  .btn-snap:hover { background:rgba(0,229,255,0.2); }
+  .btn-upload { background:rgba(108,99,255,.12); border:1px solid rgba(108,99,255,.3); color:#a89fff; }
+  .btn-upload:hover { background:rgba(108,99,255,.22); }
+
+  label { display:block; color:var(--muted); font-size:.82rem; margin-bottom:.4rem; letter-spacing:.5px; text-transform:uppercase; }
+  input[type=text], textarea {
+    width:100%; background:#0d0d14; border:1px solid var(--border); border-radius:10px;
+    padding:.75rem 1rem; color:var(--text); font-family:'DM Sans',sans-serif; font-size:.92rem;
+    outline:none; transition:border-color .2s; margin-bottom:1rem;
+  }
+  input[type=text]:focus, textarea:focus { border-color:var(--accent); }
+  textarea { resize:vertical; min-height:80px; }
+
+  /* ── Permission Modal ─────────────────────────────────── */
+  .modal-backdrop {
+    position:fixed; inset:0; z-index:500;
+    background:rgba(0,0,0,.75); backdrop-filter:blur(6px);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .25s;
+  }
+  .modal-backdrop.show { opacity:1; pointer-events:all; }
+  .modal {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:24px; padding:2rem; max-width:380px; width:90%;
+    transform:scale(.94) translateY(16px); transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+    position:relative; overflow:hidden;
+  }
+  .modal-backdrop.show .modal { transform:scale(1) translateY(0); }
+  .modal::before {
+    content:''; position:absolute; top:-60%; left:-30%;
+    width:260px; height:260px; border-radius:50%;
+    background:radial-gradient(circle,rgba(108,99,255,.18),transparent 70%);
+    pointer-events:none;
+  }
+  .modal-icon { font-size:3rem; text-align:center; margin-bottom:1rem; }
+  .modal h3 { font-family:'Syne',sans-serif; font-weight:800; font-size:1.2rem; text-align:center; margin-bottom:.5rem; }
+  .modal-desc { color:var(--muted); font-size:.88rem; text-align:center; line-height:1.65; margin-bottom:1.5rem; }
+  .modal-perms { background:#0d0d14; border-radius:12px; padding:1rem; margin-bottom:1.5rem; }
+  .perm-row { display:flex; align-items:center; gap:.75rem; padding:.4rem 0; }
+  .perm-row:not(:last-child) { border-bottom:1px solid rgba(255,255,255,.04); }
+  .perm-icon { font-size:1.1rem; width:28px; text-align:center; }
+  .perm-text { font-size:.83rem; }
+  .perm-text strong { display:block; margin-bottom:.1rem; }
+  .perm-text span { color:var(--muted); font-size:.78rem; }
+  .modal-btns { display:flex; gap:.75rem; }
+  .btn-deny { flex:1; background:transparent; border:1px solid var(--border); color:var(--muted); justify-content:center; }
+  .btn-deny:hover { border-color:var(--error); color:var(--error); }
+  .btn-allow { flex:1; background:var(--accent); color:#fff; justify-content:center; }
+  .btn-allow:hover { background:#7c74ff; }
+
+  /* Toast */
+  .toast {
+    position:fixed; bottom:2rem; right:2rem; z-index:999;
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    padding:1rem 1.5rem; display:none; align-items:center; gap:.75rem;
+    font-size:.9rem; box-shadow:0 8px 32px rgba(0,0,0,.4); max-width:320px;
+  }
+  .toast.show { display:flex; animation:slideIn .3s ease; }
+  .toast.success { border-color:var(--success); }
+  .toast.error { border-color:var(--error); }
+  @keyframes slideIn { from{transform:translateX(40px);opacity:0} to{transform:none;opacity:1} }
+
+  /* Students Grid */
+  .students-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; }
+  .students-header h2 { font-family:'Syne',sans-serif; font-weight:700; font-size:1.1rem; }
+  .search-box { background:#0d0d14; border:1px solid var(--border); border-radius:10px; padding:.6rem 1rem; color:var(--text); font-family:'DM Sans',sans-serif; font-size:.88rem; outline:none; width:220px; }
+  .search-box:focus { border-color:var(--accent); }
+
+  .students-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:1rem; max-height:calc(100vh - 260px); overflow-y:auto; padding-right:.5rem; }
+  .students-grid::-webkit-scrollbar { width:4px; }
+  .students-grid::-webkit-scrollbar-track { background:transparent; }
+  .students-grid::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+
+  .student-card { background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; transition:all .2s; position:relative; }
+  .student-card:hover { border-color:rgba(108,99,255,.4); transform:translateY(-2px); }
+  .student-photo { width:100%; aspect-ratio:1; background:#0d0d14; display:flex; align-items:center; justify-content:center; font-size:3rem; color:var(--muted); overflow:hidden; }
+  .student-photo img { width:100%; height:100%; object-fit:cover; }
+  .student-info { padding:.85rem; }
+  .student-name { font-family:'Syne',sans-serif; font-weight:700; font-size:.95rem; margin-bottom:.2rem; }
+  .student-roll { color:var(--accent); font-size:.8rem; font-weight:500; margin-bottom:.3rem; }
+  .student-addr { color:var(--muted); font-size:.78rem; line-height:1.4; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .src-badge { position:absolute; top:.5rem; left:.5rem; font-size:.65rem; padding:.18rem .5rem; border-radius:100px; font-weight:600; }
+  .src-cam { background:rgba(0,229,255,.15); color:var(--accent2); }
+  .src-upload { background:rgba(108,99,255,.2); color:#a89fff; }
+  .del-btn { position:absolute; top:.5rem; right:.5rem; background:rgba(255,82,82,.15); border:none; color:var(--error); width:26px; height:26px; border-radius:6px; cursor:pointer; font-size:.85rem; display:none; align-items:center; justify-content:center; transition:background .2s; }
+  .student-card:hover .del-btn { display:flex; }
+  .del-btn:hover { background:rgba(255,82,82,.3); }
+
+  .empty-state { grid-column:1/-1; text-align:center; padding:3rem; color:var(--muted); }
+  .empty-state .icon { font-size:3rem; margin-bottom:1rem; }
+
+  /* Source indicator */
+  .source-indicator {
+    display:flex; align-items:center; gap:.5rem; font-size:.78rem;
+    color:var(--muted); margin-bottom:.8rem; padding:.4rem .75rem;
+    background:#0d0d14; border-radius:8px; border:1px solid var(--border);
+  }
+  .source-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .source-dot.cam { background:var(--accent2); }
+  .source-dot.upload { background:var(--accent); }
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+
+<!-- ── Permission Modal ────────────────────────────────── -->
+<div class="modal-backdrop" id="perm-modal">
+  <div class="modal">
+    <div class="modal-icon">🖼️</div>
+    <h3>Access Your Gallery?</h3>
+    <p class="modal-desc">FaceAttend needs permission to let you browse and select a photo from your local device for student registration.</p>
+    <div class="modal-perms">
+      <div class="perm-row">
+        <span class="perm-icon">📂</span>
+        <div class="perm-text">
+          <strong>Read local files</strong>
+          <span>Select a photo from your device storage</span>
+        </div>
+      </div>
+      <div class="perm-row">
+        <span class="perm-icon">🔒</span>
+        <div class="perm-text">
+          <strong>Private &amp; local only</strong>
+          <span>Photo stays on your device, never uploaded externally</span>
+        </div>
+      </div>
+      <div class="perm-row">
+        <span class="perm-icon">🚫</span>
+        <div class="perm-text">
+          <strong>No auto-access</strong>
+          <span>Only the file you choose will be read</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-deny" onclick="denyGallery()">✕ Deny</button>
+      <button class="btn btn-allow" onclick="allowGallery()">✓ Allow Access</button>
+    </div>
+  </div>
+</div>
+
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="logo">Face<span>Attend</span></a>
+    <div class="nav-links">
+      <a href="/register" class="active">📁 Database</a>
+      <a href="/attendance">📸 Attendance</a>
+    </div>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="page-header">
+    <h1>Student Database</h1>
+    <p>Register students via live camera or upload a photo from your device</p>
+  </div>
+
+  <div class="layout">
+    <!-- Registration Form -->
+    <div class="form-card">
+      <h2>Register New Student</h2>
+
+      <!-- Source Tabs -->
+      <div class="source-tabs">
+        <button class="tab-btn active" id="tab-cam" onclick="switchTab('cam')">📷 Live Camera</button>
+        <button class="tab-btn" id="tab-upload" onclick="switchTab('upload')">🖼️ Upload Photo</button>
+      </div>
+
+      <!-- Camera Panel -->
+      <div id="panel-cam">
+        <div class="cam-wrap" id="cam-wrap">
+          <video id="cam-video" autoplay playsinline></video>
+          <canvas id="cam-canvas"></canvas>
+          <img id="preview-img" alt="Captured photo">
+          <div class="cam-overlay" id="cam-overlay">
+            <div class="cam-icon">📷</div>
+            <div class="cam-label">Camera not started</div>
+          </div>
+        </div>
+        <div class="cam-btns">
+          <button class="btn btn-outline" onclick="startCamera()" id="btn-start">▶ Start Cam</button>
+          <button class="btn btn-snap" onclick="capturePhoto()" id="btn-snap" disabled>📸 Capture</button>
+          <button class="btn btn-outline" onclick="retakePhoto()" id="btn-retake" style="display:none">↩ Retake</button>
+        </div>
+      </div>
+
+      <!-- Upload Panel -->
+      <div id="panel-upload" style="display:none">
+        <div class="upload-zone" id="upload-zone" onclick="requestGalleryPermission()">
+          <img id="upload-preview" alt="Preview">
+          <button class="upload-overlay-clear" id="btn-clear-upload" onclick="clearUpload(event)">✕ Clear</button>
+          <div id="upload-zone-content">
+            <div class="up-icon">🖼️</div>
+            <div class="up-title">Choose from Gallery</div>
+            <div class="up-sub">Click to browse or drag &amp; drop<br>JPG, PNG, WEBP supported</div>
+            <div class="up-badge">🔒 Permission required</div>
+          </div>
+        </div>
+        <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp" onchange="handleFileSelect(event)">
+        <div class="source-indicator" id="upload-status" style="display:none">
+          <span class="source-dot upload"></span>
+          <span id="upload-filename">No file selected</span>
+        </div>
+      </div>
+
+      <!-- Source tag shown after photo ready -->
+      <div class="source-indicator" id="photo-source-tag" style="display:none">
+        <span class="source-dot" id="source-dot-color"></span>
+        <span id="source-label-text">Photo ready</span>
+      </div>
+
+      <label>Full Name</label>
+      <input type="text" id="inp-name" placeholder="e.g. Arjun Sharma">
+      <label>Roll Number</label>
+      <input type="text" id="inp-roll" placeholder="e.g. CS2024001">
+      <label>Address</label>
+      <textarea id="inp-addr" placeholder="Full address..."></textarea>
+
+      <button class="btn btn-accent" onclick="registerStudent()" id="btn-register" disabled>
+        ✚ Register Student
+      </button>
+    </div>
+
+    <!-- Students List -->
+    <div>
+      <div class="students-header">
+        <h2>Registered Students</h2>
+        <input class="search-box" type="text" placeholder="🔍  Search..." id="search-input" oninput="filterStudents()">
+      </div>
+      <div class="students-grid" id="students-grid">
+        <div class="empty-state"><div class="icon">👥</div>Loading students...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <span id="toast-icon"></span>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+let stream = null, capturedPhoto = null, allStudents = [];
+let currentTab = 'cam'; // 'cam' | 'upload'
+let galleryPermissionGranted = localStorage.getItem('galleryPermission') === 'granted';
+
+// ── Tab switching ─────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  capturedPhoto = null;
+  document.getElementById('photo-source-tag').style.display = 'none';
+  document.getElementById('btn-register').disabled = true;
+
+  document.getElementById('tab-cam').classList.toggle('active', tab === 'cam');
+  document.getElementById('tab-upload').classList.toggle('active', tab === 'upload');
+  document.getElementById('panel-cam').style.display = tab === 'cam' ? 'block' : 'none';
+  document.getElementById('panel-upload').style.display = tab === 'upload' ? 'block' : 'none';
+
+  if (tab === 'cam') {
+    // Stop file stream if switching away
+  } else {
+    // Stop camera if running
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    resetCamUI();
+  }
+}
+
+// ── Camera ────────────────────────────────────────────────
+function resetCamUI() {
+  document.getElementById('preview-img').style.display = 'none';
+  document.getElementById('cam-video').style.display = 'block';
+  document.getElementById('cam-overlay').style.display = 'flex';
+  document.getElementById('btn-snap').style.display = 'flex';
+  document.getElementById('btn-snap').disabled = true;
+  document.getElementById('btn-retake').style.display = 'none';
+  document.getElementById('btn-start').disabled = false;
+}
+
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { width:640, height:480, facingMode:'user' } });
+    document.getElementById('cam-video').srcObject = stream;
+    document.getElementById('cam-overlay').style.display = 'none';
+    document.getElementById('btn-snap').disabled = false;
+    document.getElementById('btn-start').disabled = true;
+  } catch(e) {
+    showToast('error', '❌ Camera access denied: ' + e.message);
+  }
+}
+
+function capturePhoto() {
+  const video = document.getElementById('cam-video');
+  const canvas = document.getElementById('cam-canvas');
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  capturedPhoto = canvas.toDataURL('image/jpeg', 0.9);
+  const preview = document.getElementById('preview-img');
+  preview.src = capturedPhoto; preview.style.display = 'block';
+  document.getElementById('cam-overlay').style.display = 'none';
+  video.style.display = 'none';
+  document.getElementById('btn-snap').style.display = 'none';
+  document.getElementById('btn-retake').style.display = 'flex';
+  document.getElementById('btn-register').disabled = false;
+  showSourceTag('cam', '📷 Captured via camera');
+}
+
+function retakePhoto() {
+  capturedPhoto = null;
+  document.getElementById('preview-img').style.display = 'none';
+  document.getElementById('cam-video').style.display = 'block';
+  document.getElementById('btn-snap').style.display = 'flex';
+  document.getElementById('btn-retake').style.display = 'none';
+  document.getElementById('btn-register').disabled = true;
+  document.getElementById('photo-source-tag').style.display = 'none';
+  startCamera();
+}
+
+// ── Gallery Permission ────────────────────────────────────
+function requestGalleryPermission() {
+  if (galleryPermissionGranted) { openFilePicker(); return; }
+  document.getElementById('perm-modal').classList.add('show');
+}
+
+function allowGallery() {
+  galleryPermissionGranted = true;
+  localStorage.setItem('galleryPermission', 'granted');
+  document.getElementById('perm-modal').classList.remove('show');
+  showToast('success', '✅ Gallery access granted!');
+  setTimeout(openFilePicker, 300);
+}
+
+function denyGallery() {
+  galleryPermissionGranted = false;
+  localStorage.removeItem('galleryPermission');
+  document.getElementById('perm-modal').classList.remove('show');
+  showToast('error', '🚫 Gallery access denied.');
+}
+
+function openFilePicker() {
+  document.getElementById('file-input').click();
+}
+
+// ── File Upload ───────────────────────────────────────────
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const allowed = ['image/jpeg','image/png','image/webp'];
+  if (!allowed.includes(file.type)) {
+    showToast('error', '❌ Only JPG, PNG, WEBP allowed.'); return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    showToast('error', '❌ File too large (max 10MB).'); return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    capturedPhoto = e.target.result;
+    const preview = document.getElementById('upload-preview');
+    preview.src = capturedPhoto; preview.style.display = 'block';
+    document.getElementById('upload-zone-content').style.display = 'none';
+    document.getElementById('btn-clear-upload').style.display = 'block';
+    document.getElementById('upload-status').style.display = 'flex';
+    document.getElementById('upload-filename').textContent = file.name + ' (' + (file.size/1024).toFixed(0) + ' KB)';
+    document.getElementById('btn-register').disabled = false;
+    showSourceTag('upload', '🖼️ Uploaded from gallery — ' + file.name);
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearUpload(e) {
+  e.stopPropagation();
+  capturedPhoto = null;
+  document.getElementById('upload-preview').style.display = 'none';
+  document.getElementById('upload-zone-content').style.display = 'flex';
+  document.getElementById('btn-clear-upload').style.display = 'none';
+  document.getElementById('upload-status').style.display = 'none';
+  document.getElementById('btn-register').disabled = true;
+  document.getElementById('photo-source-tag').style.display = 'none';
+  document.getElementById('file-input').value = '';
+}
+
+// Drag & drop
+const uploadZone = document.getElementById('upload-zone');
+uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', (e) => {
+  e.preventDefault(); uploadZone.classList.remove('drag-over');
+  if (!galleryPermissionGranted) { requestGalleryPermission(); return; }
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    const dt = new DataTransfer(); dt.items.add(file);
+    document.getElementById('file-input').files = dt.files;
+    handleFileSelect({ target: { files: dt.files } });
+  }
+});
+
+// ── Source Indicator ──────────────────────────────────────
+function showSourceTag(type, label) {
+  const tag = document.getElementById('photo-source-tag');
+  const dot = document.getElementById('source-dot-color');
+  document.getElementById('source-label-text').textContent = label;
+  dot.className = 'source-dot ' + type;
+  tag.style.display = 'flex';
+}
+
+// ── Register ──────────────────────────────────────────────
+async function registerStudent() {
+  const name = document.getElementById('inp-name').value.trim();
+  const roll = document.getElementById('inp-roll').value.trim();
+  const addr = document.getElementById('inp-addr').value.trim();
+  if (!name || !roll) { showToast('error', '⚠️ Name and Roll No are required.'); return; }
+  if (!capturedPhoto) { showToast('error', '📷 Please provide a photo first.'); return; }
+
+  const btn = document.getElementById('btn-register');
+  btn.disabled = true; btn.textContent = '⏳ Registering...';
+
+  try {
+    const res = await fetch('/api/register', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name, roll_no: roll, address: addr, photo: capturedPhoto })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('success', '✅ ' + data.message);
+      document.getElementById('inp-name').value = '';
+      document.getElementById('inp-roll').value = '';
+      document.getElementById('inp-addr').value = '';
+      capturedPhoto = null;
+      document.getElementById('photo-source-tag').style.display = 'none';
+      // Reset both panels
+      if (currentTab === 'cam') retakePhoto();
+      else clearUpload({ stopPropagation: ()=>{} });
+      loadStudents();
+    } else {
+      showToast('error', '❌ ' + data.message);
+    }
+  } catch(e) { showToast('error', '❌ Network error'); }
+  btn.disabled = false; btn.textContent = '✚ Register Student';
+}
+
+// ── Students List ─────────────────────────────────────────
+async function loadStudents() {
+  const res = await fetch('/api/students');
+  allStudents = await res.json();
+  renderStudents(allStudents);
+}
+
+function filterStudents() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  renderStudents(allStudents.filter(s =>
+    s.name.toLowerCase().includes(q) || s.roll_no.toLowerCase().includes(q)
+  ));
+}
+
+function renderStudents(list) {
+  const grid = document.getElementById('students-grid');
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty-state"><div class="icon">👥</div><p>No students registered yet</p></div>`;
+    return;
+  }
+  grid.innerHTML = list.map(s => `
+    <div class="student-card">
+      <button class="del-btn" onclick="deleteStudent('${s.roll_no}')" title="Delete">✕</button>
+      <div class="student-photo">
+        ${s.photo ? `<img src="${s.photo}" alt="${s.name}">` : '👤'}
+      </div>
+      <div class="student-info">
+        <div class="student-name">${s.name}</div>
+        <div class="student-roll">${s.roll_no}</div>
+        <div class="student-addr">${s.address || '—'}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function deleteStudent(rollNo) {
+  if (!confirm('Delete this student and all their records?')) return;
+  await fetch('/api/students/' + rollNo, { method:'DELETE' });
+  showToast('success', '🗑️ Student deleted.');
+  loadStudents();
+}
+
+function showToast(type, msg) {
+  const t = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 3500);
+}
+
+loadStudents();
+</script>
+</body>
+</html>
